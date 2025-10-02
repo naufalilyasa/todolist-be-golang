@@ -1,0 +1,3 @@
+DROP TYPE IF EXISTS priority_type;
+DROP TABLE IF EXISTS todos;
+
