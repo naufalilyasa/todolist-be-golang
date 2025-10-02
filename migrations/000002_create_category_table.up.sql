@@ -1,0 +1,9 @@
+CREATE TABLE categories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    color VARCHAR(20),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE todos
+  ADD COLUMN category_id INT REFERENCES categories(id) ON DELETE SET NULL;
