@@ -8,6 +8,7 @@ import (
 	"github.com/naufalilyasa/todolist-be-golang/configs"
 	"github.com/naufalilyasa/todolist-be-golang/internal/database"
 	"github.com/naufalilyasa/todolist-be-golang/internal/handlers"
+	"github.com/naufalilyasa/todolist-be-golang/internal/middleware"
 	"github.com/naufalilyasa/todolist-be-golang/internal/repositories"
 	"github.com/naufalilyasa/todolist-be-golang/internal/services"
 )
@@ -25,6 +26,8 @@ func main() {
 	handlersCategory := handlers.NewCategoryHandler(serviceCategory)
 
 	r := chi.NewRouter()
+
+	r.Use(middleware.CORS())
 
 	r.Route("/api/todos", func(r chi.Router) {
 		r.Get("/", handlersTodo.GetTodos)
