@@ -42,7 +42,7 @@ func (h *TodoHandler) GetTodos(w http.ResponseWriter, r *http.Request) {
 	search := r.URL.Query().Get("search")
 	status := r.URL.Query().Get("status")
 	priority := r.URL.Query().Get("priority")
-	category := r.URL.Query().Get("category")
+	categoryId := r.URL.Query().Get("category_id")
 
 	// Optional: set empty string to nil
 	var statusPtr, priorityPtr, categoryPtr *string
@@ -52,8 +52,8 @@ func (h *TodoHandler) GetTodos(w http.ResponseWriter, r *http.Request) {
 	if priority != "" {
 		priorityPtr = &priority
 	}
-	if category != "" {
-		categoryPtr = &category
+	if categoryId != "" {
+		categoryPtr = &categoryId
 	}
 
 	todos, total, err := h.service.FindAllWithFilters(page, limit, search, statusPtr, priorityPtr, categoryPtr)

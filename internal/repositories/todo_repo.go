@@ -19,7 +19,7 @@ type TodoRepository interface {
 	FindAllWithFilters(
 		page, limit int,
 		search string,
-		status, priority, category *string,
+		status, priority, categoryId *string,
 	) ([]models.Todo, int64, error)
 }
 
@@ -87,7 +87,7 @@ func (r *todoRepositoryDB) UpdateComplete(todo models.Todo) (*models.Todo, error
 func (r *todoRepositoryDB) FindAllWithFilters(
 	page, limit int,
 	search string,
-	status, priority, category *string,
+	status, priority, categoryId *string,
 ) ([]models.Todo, int64, error) {
 	var todos []models.Todo
 	var total int64
@@ -101,7 +101,7 @@ func (r *todoRepositoryDB) FindAllWithFilters(
 	}
 
 	// Filter status
-	if *status != "" {
+	if status != nil && *status != "" {
 		var isCompleted bool
 		switch strings.ToLower(*status) {
 		case "completed":
@@ -109,7 +109,7 @@ func (r *todoRepositoryDB) FindAllWithFilters(
 		case "pending":
 			isCompleted = false
 		default:
-
+			// ignore invalid value
 		}
 		query = query.Where("is_completed = ?", isCompleted)
 	}
@@ -120,8 +120,8 @@ func (r *todoRepositoryDB) FindAllWithFilters(
 	}
 
 	// Filter category
-	if category != nil {
-		query = query.Where("category_id = ?", *category)
+	if categoryId != nil {
+		query = query.Where("category_id = ?", *categoryId)
 	}
 
 	// Count total filtered data

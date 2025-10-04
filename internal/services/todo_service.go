@@ -15,7 +15,7 @@ type TodoService interface {
 	FindAllWithFilters(
 		page, limit int,
 		search string,
-		status, priority, category *string,
+		status, priority, categoryId *string,
 	) ([]models.Todo, int64, error)
 }
 
@@ -54,7 +54,7 @@ func (s *todoService) UpdateTodoComplete(todo models.Todo) (*models.Todo, error)
 func (s *todoService) FindAllWithFilters(
 	page, limit int,
 	search string,
-	status, priority, category *string,
+	status, priority, categoryId *string,
 ) ([]models.Todo, int64, error) {
-	return s.repo.FindAllWithFilters(page, limit, search, status, priority, category)
+	return s.repo.FindAllWithFilters(page, limit, search, status, priority, categoryId)
 }
