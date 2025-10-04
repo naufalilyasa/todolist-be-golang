@@ -1,0 +1,65 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:17-alpine3.21
+    container_name: todo_postgres
+    restart: always
+    env_file:
+      - ./.env
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+
+  init-db:
+    image: postgres:17-alpine3.21
+    container_name: init_db
+    env_file:
+      - ./.env
+    command: >
+      sh -c "until pg_isready -h $DB_HOST -p $DB_PORT; do sleep 1; done;
+            psql -v ON_ERROR_STOP=1 --username $POSTGRES_USER --dbname=postgres -c 'CREATE DATABASE $DB_NAME;' || true"
+    depends_on:
+      - postgres
+
+  migrate:
+    image: migrate/migrate:latest
+    container_name: migrate
+    depends_on:
+      init-db:
+        condition: service_completed_successfully
+    env_file:
+      - ./.env
+    volumes:
+      - ./migrations:/migrations
+    command:
+      [
+        "-path",
+        "/migrations",
+        "-database",
+        "postgres://${DB_USER}:${DB_PASSWORD}@postgres:${DB_PORT}/${DB_NAME}?sslmode=disable",
+        "up",
+      ]
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: todo_backend
+    restart: always
+    env_file:
+      - ./.env
+    ports:
+      - "${BACKEND_PORT}:8080"
+    depends_on:
+      - postgres
+      - migrate
+
+volumes:
+  pgdata:
