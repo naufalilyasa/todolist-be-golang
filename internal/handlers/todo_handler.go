@@ -6,17 +6,30 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-playground/validator/v10"
 	"github.com/naufalilyasa/todolist-be-golang/internal/models"
 	"github.com/naufalilyasa/todolist-be-golang/internal/services"
 	"github.com/naufalilyasa/todolist-be-golang/pkg"
 )
 
 type TodoHandler struct {
-	service services.TodoService
+	service  services.TodoService
+	validate *validator.Validate
 }
 
 func NewTodoHandler(service services.TodoService) *TodoHandler {
-	return &TodoHandler{service}
+	return &TodoHandler{
+		service:  service,
+		validate: validator.New(),
+	}
+}
+
+type TodoRequest struct {
+	Title       string `json:"title" validate:"required,min=3,max=255"`
+	Description string `json:"description" validate:"max=1000"`
+	Priority    string `json:"priority" validate:"required,oneof=high medium low"`
+	IsCompleted bool   `json:"is_completed"`
+	CategoryID  *int   `json:"category_id,omitempty" validate:"omitempty,gt=0"`
 }
 
 /*
@@ -86,10 +99,24 @@ func (h *TodoHandler) GetTodoById(w http.ResponseWriter, r *http.Request) {
 
 // POST /api/todos # Create new todo
 func (h *TodoHandler) Create(w http.ResponseWriter, r *http.Request) {
-	var todo models.Todo
-	if err := json.NewDecoder(r.Body).Decode(&todo); err != nil {
+	var req TodoRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		pkg.JSONError(w, http.StatusBadRequest, "Invalid request payload")
 		return
+	}
+
+	// Validate
+	if err := h.validate.Struct(req); err != nil {
+		pkg.JSONError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	todo := models.Todo{
+		Title:       req.Title,
+		Description: req.Description,
+		Priority:    models.Priority(req.Priority),
+		IsCompleted: req.IsCompleted,
+		CategoryID:  req.CategoryID,
 	}
 
 	created, err := h.service.CreateTodo(todo)
@@ -102,13 +129,33 @@ func (h *TodoHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // PUT /api/todos/:id # Update todo
 func (h *TodoHandler) Update(w http.ResponseWriter, r *http.Request) {
-	var todo models.Todo
-	id, _ := strconv.Atoi(chi.URLParam(r, "id"))
-	if err := json.NewDecoder(r.Body).Decode(&todo); err != nil {
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		pkg.JSONError(w, http.StatusBadRequest, "Invalid todo ID")
+		return
+	}
+
+	var req TodoRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		pkg.JSONError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
-	todo.ID = id
+
+	// Validate
+	if err := h.validate.Struct(req); err != nil {
+		pkg.JSONError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	todo := models.Todo{
+		ID:          id,
+		Title:       req.Title,
+		Description: req.Description,
+		Priority:    models.Priority(req.Priority),
+		IsCompleted: req.IsCompleted,
+		CategoryID:  req.CategoryID,
+	}
+
 	updated, err := h.service.UpdateTodo(todo)
 	if err != nil {
 		pkg.JSONError(w, http.StatusInternalServerError, "Failed update todo")
@@ -131,24 +178,29 @@ func (h *TodoHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 // PATCH /api/todos/:id/complete # Toggle completion status
 func (h *TodoHandler) UpdateComplete(w http.ResponseWriter, r *http.Request) {
-	var todo models.Todo
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		pkg.JSONError(w, http.StatusBadRequest, "Invalid todo ID")
 		return
 	}
 
-	var input struct {
-		IsCompleted bool `json:"is_completed"`
+	var req struct {
+		IsCompleted *bool `json:"is_completed" validate:"required"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		pkg.JSONError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
-	todo = models.Todo{
+	if err := h.validate.Struct(req); err != nil {
+		pkg.JSONError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	todo := models.Todo{
 		ID:          id,
-		IsCompleted: input.IsCompleted,
+		IsCompleted: *req.IsCompleted,
 	}
 
 	updated, err := h.service.UpdateTodoComplete(todo)
@@ -157,5 +209,5 @@ func (h *TodoHandler) UpdateComplete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pkg.JSONSuccess(w, http.StatusOK, "Success toogle completion todo", updated, nil)
+	pkg.JSONSuccess(w, http.StatusOK, "Success toggle completion todo", updated, nil)
 }
