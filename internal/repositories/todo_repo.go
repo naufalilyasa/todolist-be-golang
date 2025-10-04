@@ -94,7 +94,6 @@ func (r *todoRepositoryDB) FindAllWithFilters(
 
 	query := r.db.Model(&models.Todo{}).Preload("Category")
 
-	fmt.Println(search)
 	// Search
 	if search != "" {
 		query = query.Where("title ILIKE ?", "%"+search+"%")
