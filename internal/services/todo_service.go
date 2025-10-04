@@ -12,7 +12,11 @@ type TodoService interface {
 	UpdateTodo(todo models.Todo) (*models.Todo, error)
 	DeleteTodo(id int) error
 	UpdateTodoComplete(todo models.Todo) (*models.Todo, error)
-	FindAllWithPaginationAndSearch(page, limit int, search string) ([]models.Todo, int64, error)
+	FindAllWithFilters(
+		page, limit int,
+		search string,
+		status, priority, category *string,
+	) ([]models.Todo, int64, error)
 }
 
 type todoService struct {
@@ -47,6 +51,10 @@ func (s *todoService) UpdateTodoComplete(todo models.Todo) (*models.Todo, error)
 	return s.repo.UpdateComplete(todo)
 }
 
-func (s *todoService) FindAllWithPaginationAndSearch(page, limit int, search string) ([]models.Todo, int64, error) {
-	return s.repo.FindAllWithPaginationAndSearch(page, limit, search)
+func (s *todoService) FindAllWithFilters(
+	page, limit int,
+	search string,
+	status, priority, category *string,
+) ([]models.Todo, int64, error) {
+	return s.repo.FindAllWithFilters(page, limit, search, status, priority, category)
 }

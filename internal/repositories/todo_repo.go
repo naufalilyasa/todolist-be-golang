@@ -3,6 +3,7 @@ package repositories
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/naufalilyasa/todolist-be-golang/internal/models"
 	"gorm.io/gorm"
@@ -15,7 +16,11 @@ type TodoRepository interface {
 	Update(todo models.Todo) (*models.Todo, error)
 	Delete(id int) error
 	UpdateComplete(todo models.Todo) (*models.Todo, error)
-	FindAllWithPaginationAndSearch(page, limit int, search string) ([]models.Todo, int64, error)
+	FindAllWithFilters(
+		page, limit int,
+		search string,
+		status, priority, category *string,
+	) ([]models.Todo, int64, error)
 }
 
 type todoRepositoryDB struct {
@@ -79,20 +84,52 @@ func (r *todoRepositoryDB) UpdateComplete(todo models.Todo) (*models.Todo, error
 	return &updated, nil
 }
 
-func (r *todoRepositoryDB) FindAllWithPaginationAndSearch(page, limit int, search string) ([]models.Todo, int64, error) {
+func (r *todoRepositoryDB) FindAllWithFilters(
+	page, limit int,
+	search string,
+	status, priority, category *string,
+) ([]models.Todo, int64, error) {
 	var todos []models.Todo
 	var total int64
 
 	query := r.db.Model(&models.Todo{}).Preload("Category")
 
+	fmt.Println(search)
+	// Search
 	if search != "" {
 		query = query.Where("title ILIKE ?", "%"+search+"%")
 	}
 
+	// Filter status
+	if *status != "" {
+		var isCompleted bool
+		switch strings.ToLower(*status) {
+		case "completed":
+			isCompleted = true
+		case "pending":
+			isCompleted = false
+		default:
+
+		}
+		query = query.Where("is_completed = ?", isCompleted)
+	}
+
+	// Filter priority
+	if priority != nil {
+		query = query.Where("priority = ?", *priority)
+	}
+
+	// Filter category
+	if category != nil {
+		query = query.Where("category_id = ?", *category)
+	}
+
+	// Count total filtered data
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
+	// Pagination
 	offset := (page - 1) * limit
 	if err := query.
 		Limit(limit).
